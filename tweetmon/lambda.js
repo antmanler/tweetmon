@@ -10,7 +10,7 @@ const twitter = new Twitter({
 	access_token_secret: process.env.TWITTER_ACCESS_TOKEN_SECRET,
 });
 
-const trumpUserID = '25073877';
+const user_id = process.env.TWITTER_USER_ID;
 
 // Require mail libraries for Mailgun
 const nodemailer = require('nodemailer');
@@ -26,62 +26,71 @@ exports.handler = function (event, context, callback) {
 	ddb.get({
 		TableName: 'tweetmon',
 		Key: { 'key': 'last_checkpoint' },
-	}, function (err, data) {
+	}, (err, data) => {
 		if (err) {
 			console.error('ddb get error:', err);
-		} else {
-			const { since_id } = data;
-			console.log('since_id:', since_id);
-			twitter.get(
-				'statuses/user_timeline',
-				{
-					user_id: trumpUserID,
-					exclude_replies: true,
-					tweet_mode: 'extended',
-					since_id,
-				},
-				function (error, tweets, response) {
-					tweets.forEach((t, idx) => {
-						if (idx === 0) {
-							// remeber last checkpoint
-							ddb.put({
-								TableName: 'tweetmon',
-								Item: { 'since_id': t.id_str },
-							}, function (err, data) {
-								if (err) {
-									console.error('ddb put error:', err);
-								}
-							});
-						}
-						// For the very first invocation, 
-						// we just write down the since id
-						if (!since_id) {
+			return;
+		}
+		const { Item: { since_id} } = data || {Item:{}};
+		console.log('since_id:', since_id, data);
+		twitter.get(
+			'statuses/user_timeline',
+			{
+				user_id,
+				since_id,
+				exclude_replies: true,
+				tweet_mode: 'extended',
+			},
+			(error, tweets, response) => {
+				if (error) {
+					console.error('twitter api failed:', error);
+					return;
+				}
+
+				tweets.forEach((t, idx) => {
+					if (idx === 0) {
+						// remeber last checkpoint
+						ddb.put({
+							TableName: 'tweetmon',
+							Item: {
+								key: 'last_checkpoint',
+								'since_id': t.id_str
+							},
+						}, (err, data) => {
+							if (err) {
+								console.error('ddb put error:', err);
+							}
+						});
+					}
+					// For the very first invocation, 
+					// we just write down the since id
+					if (!since_id) {
+						return;
+					}
+					// send tweet to mail
+					content = JSON.stringify(t);
+					mailgun.sendMail({
+						from: process.env.MAILGUN_FROM,
+						to: process.env.MAILGUN_TO,
+						subject: `tweet from ${t.user.screen_name}`,
+						text: content,
+						attachments: [
+							{
+								filename: 'tweet.json',
+								contentType: 'application/json',
+								content,
+							}
+						],
+					}, (err, info) => {
+						if (err) {
+							console.log('failed to send mail:', err);
 							return;
 						}
-						// send tweet to mail
-						content = JSON.stringify(t);
-						mailgun.sendMail({
-							from: process.env.MAILGUN_FROM,
-							to: process.env.MAILGUN_TO,
-							subject: `tweet from ${t.user.screen_name}`,
-							text: content,
-							attachments: [
-								{
-									filename: 'tweet.json',
-									contentType: 'application/json',
-									content,
-								}
-							],
-						}, function (err, info) {
-							if (err) {
-								console.log('failed to send mail:', err);
-							}
-						})
-					});
-					console.log('tweets:', tweets);
-				},
-			);
-		}
+						console.info(`send to ${process.env.MAILGUN_TO} for tid: ${t.id_str}`);
+					})
+				});
+			},
+		);
 	});
 
 	callback(null, 'Successfully executed');
