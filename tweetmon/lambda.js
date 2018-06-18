@@ -4,9 +4,11 @@ const ddb = new AWS.DynamoDB.DocumentClient();
 const Twitter = require('twitter');
 
 const twitter = new Twitter({
-  consumer_key: process.env.TWITTER_CONSUMER_KEY,
-  consumer_secret: process.env.TWITTER_CONSUMER_SECRET,
+	consumer_key: process.env.TWITTER_CONSUMER_KEY,
+	consumer_secret: process.env.TWITTER_CONSUMER_SECRET,
 });
+
+const trumpUserID = '25073877';
 
 exports.handler = function (event, context, callback) {
 
@@ -18,8 +20,20 @@ exports.handler = function (event, context, callback) {
 			//handle error
 			console.error(err);
 		} else {
-			//your logic goes here
-			console.log(data);
+			const since_id = data;
+			console.log(since_id);
+
+			twitter.get(
+				'statuses/user_timeline',
+				{
+					user_id: trumpUserID,
+					exclude_replies: true,
+					since_id,
+				},
+				function (error, tweets, response) {
+					console.log(tweets);
+				},
+			);
 		}
 	});
 
