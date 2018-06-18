@@ -6,6 +6,8 @@ const Twitter = require('twitter');
 const twitter = new Twitter({
 	consumer_key: process.env.TWITTER_CONSUMER_KEY,
 	consumer_secret: process.env.TWITTER_CONSUMER_SECRET,
+	access_token_key: process.env.TWITTER_ACCESS_TOKEN_KEY,
+	access_token_secret: process.env.TWITTER_ACCESS_TOKEN_SECRET,
 });
 
 const trumpUserID = '25073877';
@@ -19,8 +21,8 @@ exports.handler = function (event, context, callback) {
 		if (err) {
 			console.error('ddb get error:', err);
 		} else {
-			const since_id = data;
-			console.log(`since_id: ${since_id}`);
+			const {since_id} = data;
+			console.log('since_id:', since_id);
 
 			twitter.get(
 				'statuses/user_timeline',
@@ -30,7 +32,7 @@ exports.handler = function (event, context, callback) {
 					since_id,
 				},
 				function (error, tweets, response) {
-					console.log(tweets);
+					console.log('tweets:', tweets);
 				},
 			);
 		}
