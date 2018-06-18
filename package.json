@@ -3,6 +3,8 @@
   "version": "1.0.0",
   "dependencies": {
     "aws-sdk": "2.176.0",
-    "twitter": "1.7.1"
+    "twitter": "1.7.1",
+    "nodemailer": "4.6.7",
+    "nodemailer-mailgun-transport": "1.4.0"
   }
 }
