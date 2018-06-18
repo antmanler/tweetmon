@@ -17,11 +17,10 @@ exports.handler = function (event, context, callback) {
 		Key: { 'key': 'last_checkpoint' }
 	}, function (err, data) {
 		if (err) {
-			//handle error
-			console.error(err);
+			console.error('ddb get error:', err);
 		} else {
 			const since_id = data;
-			console.log(since_id);
+			console.log(`since_id: ${since_id}`);
 
 			twitter.get(
 				'statuses/user_timeline',
